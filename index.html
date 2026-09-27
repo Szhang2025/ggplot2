@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ggplot2 Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+:root{
+  --bg:#f5f6f3; --panel:#ffffff; --border:#dfe1dc; --ink:#20241f; --sub:#5b6259;
+  --accent:#2f5f6d; --accent-ink:#ffffff;
+  --gg-panel:#ebebeb; --gg-grid:#ffffff;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15181a; --panel:#1d2124; --border:#33383b; --ink:#e9ebe7; --sub:#9aa39a;
+    --accent:#6fb3c2; --accent-ink:#0e1213;
+    --gg-panel:#2a2e2c; --gg-grid:#1d2124;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15181a; --panel:#1d2124; --border:#33383b; --ink:#e9ebe7; --sub:#9aa39a;
+  --accent:#6fb3c2; --accent-ink:#0e1213;
+  --gg-panel:#2a2e2c; --gg-grid:#1d2124;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;height:100%;}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:'IBM Plex Sans',system-ui,sans-serif;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px;}
+header{margin-bottom:22px;}
+header h1{font-size:1.5rem;font-weight:700;margin:0 0 4px;letter-spacing:-0.01em;}
+header p{color:var(--sub);margin:0;font-size:0.92rem;max-width:62ch;line-height:1.5;}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:18px;}
+.panel h2{font-size:0.78rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--sub);margin:0 0 14px;font-weight:600;}
+.row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;}
+.field{display:flex;flex-direction:column;gap:5px;min-width:150px;}
+.field label{font-size:0.78rem;color:var(--sub);font-weight:500;}
+select,input[type=text],input[type=search]{
+  font-family:inherit;font-size:0.92rem;padding:8px 10px;border-radius:7px;
+  border:1px solid var(--border);background:var(--bg);color:var(--ink);
+}
+select:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+button{
+  font-family:inherit;font-size:0.88rem;font-weight:600;padding:8px 14px;border-radius:7px;
+  border:1px solid var(--border);background:var(--bg);color:var(--ink);cursor:pointer;
+}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+button:hover{filter:brightness(0.96);}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.upload-btn{font-size:0.85rem;}
+.cols-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.col-pill{
+  display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:0.76rem;
+  border:1px solid var(--border);border-radius:999px;padding:4px 10px;background:var(--bg);
+}
+.col-pill .type-tag{font-weight:600;color:var(--accent);}
+.col-pill button{padding:2px 8px;font-size:0.7rem;border-radius:999px;}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;}
+table{border-collapse:collapse;width:100%;font-family:'IBM Plex Mono',monospace;font-size:0.82rem;white-space:nowrap;}
+th,td{padding:7px 12px;border-bottom:1px solid var(--border);text-align:left;}
+th{background:var(--bg);position:sticky;top:0;font-weight:600;}
+tr:hover td{background:var(--bg);}
+.table-controls{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
+.pager{display:flex;align-items:center;gap:10px;font-size:0.85rem;color:var(--sub);}
+.layout{display:grid;grid-template-columns:1fr;gap:18px;}
+@media(min-width:920px){.layout{grid-template-columns:1fr 1fr;align-items:start;}}
+.plot-card{min-height:340px;}
+.plot-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap;}
+.seg{display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;}
+.seg button{border:none;border-radius:0;background:var(--bg);}
+.seg button.active{background:var(--accent);color:var(--accent-ink);}
+svg.chart{width:100%;height:auto;display:block;}
+.gg-panel-bg{fill:var(--gg-panel);}
+.gg-grid{stroke:var(--gg-grid);stroke-width:1;}
+.axis path,.axis line{stroke:var(--sub);}
+.axis text{fill:var(--sub);font-family:'IBM Plex Sans',sans-serif;font-size:10px;}
+.facet-title{font-size:11px;fill:var(--ink);font-weight:600;font-family:'IBM Plex Sans',sans-serif;}
+.legend-item text{font-size:11px;fill:var(--ink);font-family:'IBM Plex Sans',sans-serif;}
+.facet-grid{display:flex;flex-wrap:wrap;gap:14px;}
+.facet-cell{flex:1 1 220px;min-width:200px;}
+.hint{color:var(--sub);font-size:0.82rem;margin-top:8px;line-height:1.5;}
+.empty{color:var(--sub);font-size:0.9rem;padding:40px 10px;text-align:center;}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
+.modal-backdrop.open{display:flex;}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:10px;max-width:640px;width:100%;max-height:80vh;display:flex;flex-direction:column;}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);}
+.modal-head h3{margin:0;font-size:0.95rem;}
+.modal-body{padding:18px;overflow:auto;}
+.modal-body pre{font-family:'IBM Plex Mono',monospace;font-size:0.86rem;line-height:1.6;white-space:pre-wrap;margin:0;}
+.modal-foot{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>ggplot2 Explorer</h1>
+  <p>Load a dataset, pick variables, and see how ggplot2 picks a chart type based on whether each variable is numeric or categorical — with the matching R code for every plot.</p>
+</header>
+
+<div class="panel">
+  <h2>1 · Data</h2>
+  <div class="row">
+    <div class="field">
+      <label for="builtinSelect">Built-in R dataset</label>
+      <select id="builtinSelect"></select>
+    </div>
+    <div class="field">
+      <label for="csvFile">or upload your own CSV</label>
+      <input type="file" id="csvFile" accept=".csv,text/csv" class="upload-btn">
+    </div>
+    <div class="field" style="min-width:auto;">
+      <label>&nbsp;</label>
+      <span id="datasetSummary" class="hint" style="margin-top:0;"></span>
+    </div>
+  </div>
+  <div id="colsStrip" class="cols-strip"></div>
+  <p class="hint">Click a column's type tag to override numeric ↔ categorical — useful for things like <code>cyl</code> or <code>dose</code>, which are numbers but often used as groups.</p>
+</div>
+
+<div class="panel">
+  <h2>2 · Data table</h2>
+  <div class="table-controls">
+    <input type="search" id="searchBox" placeholder="Search rows…" style="min-width:200px;">
+    <div class="pager">
+      <button id="prevPage">← Prev</button>
+      <span id="pageLabel">Page 1</span>
+      <button id="nextPage">Next →</button>
+    </div>
+  </div>
+  <div class="table-wrap"><table><thead id="tHead"></thead><tbody id="tBody"></tbody></table></div>
+</div>
+
+<div class="layout">
+  <div class="panel">
+    <h2>3 · Variables</h2>
+    <div class="row">
+      <div class="field">
+        <label for="var1Select">Variable 1</label>
+        <select id="var1Select"></select>
+      </div>
+      <div class="field">
+        <label for="var2Select">Variable 2 (optional)</label>
+        <select id="var2Select"></select>
+      </div>
+      <div class="field">
+        <label for="facetSelect">Facet by (optional, categorical)</label>
+        <select id="facetSelect"></select>
+      </div>
+    </div>
+    <div class="row" style="margin-top:14px;">
+      <div class="field">
+        <label>Numeric display</label>
+        <div class="seg" id="modeSeg">
+          <button data-mode="density" class="active">Density</button>
+          <button data-mode="box">Boxplot</button>
+        </div>
+      </div>
+    </div>
+    <p class="hint" id="comboHint"></p>
+  </div>
+
+  <div class="panel plot-card">
+    <div class="plot-toolbar">
+      <h2 style="margin:0;">4 · Plot</h2>
+      <button id="showCode" class="primary">Show R code</button>
+    </div>
+    <div id="plotArea"></div>
+  </div>
+</div>
+
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <div class="modal-head"><h3>Equivalent R / ggplot2 code</h3><button id="closeModal">✕</button></div>
+    <div class="modal-body"><pre id="codeText"></pre></div>
+    <div class="modal-foot"><button id="copyCode">Copy</button><button class="primary" id="closeModal2">Close</button></div>
+  </div>
+</div>
+
+<script>
+/* ---------- built-in datasets (as CSV text, parsed uniformly) ---------- */
+const BUILTIN = {
+mtcars:`mpg,cyl,hp,wt,am
+21.0,6,110,2.620,manual
+21.0,6,110,2.875,manual
+22.8,4,93,2.320,manual
+21.4,6,110,3.215,automatic
+18.7,8,175,3.440,automatic
+18.1,6,105,3.460,automatic
+14.3,8,245,3.570,automatic
+24.4,4,62,3.190,automatic
+22.8,4,95,3.150,automatic
+19.2,6,123,3.440,automatic
+17.8,6,123,3.440,automatic
+16.4,8,180,4.070,automatic
+17.3,8,180,3.730,automatic
+15.2,8,180,3.780,automatic
+10.4,8,205,5.250,automatic
+10.4,8,215,5.424,automatic
+14.7,8,230,5.345,automatic
+32.4,4,66,2.200,manual
+30.4,4,52,1.615,manual
+33.9,4,65,1.835,manual
+21.5,4,97,2.465,automatic
+15.5,8,150,3.520,automatic
+15.2,8,150,3.435,automatic
+13.3,8,245,3.840,automatic
+19.2,8,175,3.845,automatic
+27.3,4,66,1.935,manual
+26.0,4,91,2.140,manual
+30.4,4,113,1.513,manual
+15.8,8,264,3.170,manual
+19.7,6,175,2.770,manual
+15.0,8,335,3.570,manual
+21.4,4,109,2.780,manual`,
+iris:`Sepal.Length,Sepal.Width,Petal.Length,Petal.Width,Species
+5.1,3.5,1.4,0.2,setosa
+4.9,3.0,1.4,0.2,setosa
+4.7,3.2,1.3,0.2,setosa
+4.6,3.1,1.5,0.2,setosa
+5.0,3.6,1.4,0.2,setosa
+5.4,3.9,1.7,0.4,setosa
+4.6,3.4,1.4,0.3,setosa
+5.0,3.4,1.5,0.2,setosa
+4.4,2.9,1.4,0.2,setosa
+4.9,3.1,1.5,0.1,setosa
+5.4,3.7,1.5,0.2,setosa
+4.8,3.4,1.6,0.2,setosa
+4.8,3.0,1.4,0.1,setosa
+4.3,3.0,1.1,0.1,setosa
+5.8,4.0,1.2,0.2,setosa
+5.7,4.4,1.5,0.4,setosa
+5.4,3.9,1.3,0.4,setosa
+5.1,3.5,1.4,0.3,setosa
+5.7,3.8,1.7,0.3,setosa
+5.1,3.8,1.5,0.3,setosa
+5.4,3.4,1.7,0.2,setosa
+5.1,3.7,1.5,0.4,setosa
+4.6,3.6,1.0,0.2,setosa
+5.1,3.3,1.7,0.5,setosa
+4.8,3.4,1.9,0.2,setosa
+5.0,3.0,1.6,0.2,setosa
+5.0,3.4,1.6,0.4,setosa
+5.2,3.5,1.5,0.2,setosa
+5.2,3.4,1.4,0.2,setosa
+4.7,3.2,1.6,0.2,setosa
+4.8,3.1,1.6,0.2,setosa
+5.4,3.4,1.5,0.4,setosa
+5.2,4.1,1.5,0.1,setosa
+5.5,4.2,1.4,0.2,setosa
+4.9,3.1,1.5,0.2,setosa
+5.0,3.2,1.2,0.2,setosa
+5.5,3.5,1.3,0.2,setosa
+4.9,3.6,1.4,0.1,setosa
+4.4,3.0,1.3,0.2,setosa
+5.1,3.4,1.5,0.2,setosa
+5.0,3.5,1.3,0.3,setosa
+4.5,2.3,1.3,0.3,setosa
+4.4,3.2,1.3,0.2,setosa
+5.0,3.5,1.6,0.6,setosa
+5.1,3.8,1.9,0.4,setosa
+4.8,3.0,1.4,0.3,setosa
+5.1,3.8,1.6,0.2,setosa
+4.6,3.2,1.4,0.2,setosa
+5.3,3.7,1.5,0.2,setosa
+5.0,3.3,1.4,0.2,setosa
+7.0,3.2,4.7,1.4,versicolor
+6.4,3.2,4.5,1.5,versicolor
+6.9,3.1,4.9,1.5,versicolor
+5.5,2.3,4.0,1.3,versicolor
+6.5,2.8,4.6,1.5,versicolor
+5.7,2.8,4.5,1.3,versicolor
+6.3,3.3,4.7,1.6,versicolor
+4.9,2.4,3.3,1.0,versicolor
+6.6,2.9,4.6,1.3,versicolor
+5.2,2.7,3.9,1.4,versicolor
+5.0,2.0,3.5,1.0,versicolor
+5.9,3.0,4.2,1.5,versicolor
+6.0,2.2,4.0,1.0,versicolor
+6.1,2.9,4.7,1.4,versicolor
+5.6,2.9,3.6,1.3,versicolor
+6.7,3.1,4.4,1.4,versicolor
+5.6,3.0,4.5,1.5,versicolor
+5.8,2.7,4.1,1.0,versicolor
+6.2,2.2,4.5,1.5,versicolor
+5.6,2.5,3.9,1.1,versicolor
+5.9,3.2,4.8,1.8,versicolor
+6.1,2.8,4.0,1.3,versicolor
+6.3,2.5,4.9,1.5,versicolor
+6.1,2.8,4.7,1.2,versicolor
+6.4,2.9,4.3,1.3,versicolor
+6.6,3.0,4.4,1.4,versicolor
+6.8,2.8,4.8,1.4,versicolor
+6.7,3.0,5.0,1.7,versicolor
+6.0,2.9,4.5,1.5,versicolor
+5.7,2.6,3.5,1.0,versicolor
+5.5,2.4,3.8,1.1,versicolor
+5.5,2.4,3.7,1.0,versicolor
+5.8,2.7,3.9,1.2,versicolor
+6.0,2.7,5.1,1.6,versicolor
+5.4,3.0,4.5,1.5,versicolor
+6.0,3.4,4.5,1.6,versicolor
+6.7,3.1,4.7,1.5,versicolor
+6.3,2.3,4.4,1.3,versicolor
+5.6,3.0,4.1,1.3,versicolor
+5.5,2.5,4.0,1.3,versicolor
+5.5,2.6,4.4,1.2,versicolor
+6.1,3.0,4.6,1.4,versicolor
+5.8,2.6,4.0,1.2,versicolor
+5.0,2.3,3.3,1.0,versicolor
+5.6,2.7,4.2,1.3,versicolor
+5.7,3.0,4.2,1.2,versicolor
+5.7,2.9,4.2,1.3,versicolor
+6.2,2.9,4.3,1.3,versicolor
+5.1,2.5,3.0,1.1,versicolor
+5.7,2.8,4.1,1.3,versicolor
+6.3,3.3,6.0,2.5,virginica
+5.8,2.7,5.1,1.9,virginica
+7.1,3.0,5.9,2.1,virginica
+6.3,2.9,5.6,1.8,virginica
+6.5,3.0,5.8,2.2,virginica
+7.6,3.0,6.6,2.1,virginica
+4.9,2.5,4.5,1.7,virginica
+7.3,2.9,6.3,1.8,virginica
+6.7,2.5,5.8,1.8,virginica
+7.2,3.6,6.1,2.5,virginica
+6.5,3.2,5.1,2.0,virginica
+6.4,2.7,5.3,1.9,virginica
+6.8,3.0,5.5,2.1,virginica
+5.7,2.5,5.0,2.0,virginica
+5.8,2.8,5.1,2.4,virginica
+6.4,3.2,5.3,2.3,virginica
+6.5,3.0,5.5,1.8,virginica
+7.7,3.8,6.7,2.2,virginica
+7.7,2.6,6.9,2.3,virginica
+6.0,2.2,5.0,1.5,virginica
+6.9,3.2,5.7,2.3,virginica
+5.6,2.8,4.9,2.0,virginica
+7.7,2.8,6.7,2.0,virginica
+6.3,2.7,4.9,1.8,virginica
+6.7,3.3,5.7,2.1,virginica
+7.2,3.2,6.0,1.8,virginica
+6.2,2.8,4.8,1.8,virginica
+6.1,3.0,4.9,1.8,virginica
+6.4,2.8,5.6,2.1,virginica
+7.2,3.0,5.8,1.6,virginica
+7.4,2.8,6.1,1.9,virginica
+7.9,3.8,6.4,2.0,virginica
+6.4,2.8,5.6,2.2,virginica
+6.3,2.8,5.1,1.5,virginica
+6.1,2.6,5.6,1.4,virginica
+7.7,3.0,6.1,2.3,virginica
+6.3,3.4,5.6,2.4,virginica
+6.4,3.1,5.5,1.8,virginica
+6.0,3.0,4.8,1.8,virginica
+6.9,3.1,5.4,2.1,virginica
+6.7,3.1,5.6,2.4,virginica
+6.9,3.1,5.1,2.3,virginica
+5.8,2.7,5.1,1.9,virginica
+6.8,3.2,5.9,2.3,virginica
+6.7,3.3,5.7,2.5,virginica
+6.7,3.0,5.2,2.3,virginica
+6.3,2.5,5.0,1.9,virginica
+6.5,3.0,5.2,2.0,virginica
+6.2,3.4,5.4,2.3,virginica
+5.9,3.0,5.1,1.8,virginica`,
+PlantGrowth:`weight,group
+4.17,ctrl
+5.58,ctrl
+5.18,ctrl
+6.11,ctrl
+4.50,ctrl
+4.61,ctrl
+5.17,ctrl
+4.53,ctrl
+5.33,ctrl
+5.14,ctrl
+4.81,trt1
+4.17,trt1
+4.41,trt1
+3.59,trt1
+5.87,trt1
+3.83,trt1
+6.03,trt1
+4.89,trt1
+4.32,trt1
+4.69,trt1
+6.31,trt2
+5.12,trt2
+5.54,trt2
+5.50,trt2
+5.37,trt2
+5.29,trt2
+4.92,trt2
+6.15,trt2
+5.80,trt2
+5.26,trt2`,
+ToothGrowth:`len,supp,dose
+4.2,VC,0.5
+11.5,VC,0.5
+7.3,VC,0.5
+5.8,VC,0.5
+6.4,VC,0.5
+10.0,VC,0.5
+11.2,VC,0.5
+11.2,VC,0.5
+5.2,VC,0.5
+7.0,VC,0.5
+16.5,VC,1
+16.5,VC,1
+15.2,VC,1
+17.3,VC,1
+22.5,VC,1
+17.3,VC,1
+13.6,VC,1
+14.5,VC,1
+18.8,VC,1
+15.5,VC,1
+23.6,VC,2
+18.5,VC,2
+33.9,VC,2
+25.5,VC,2
+26.4,VC,2
+32.5,VC,2
+26.7,VC,2
+21.5,VC,2
+23.3,VC,2
+29.5,VC,2
+15.2,OJ,0.5
+21.5,OJ,0.5
+17.6,OJ,0.5
+9.7,OJ,0.5
+14.5,OJ,0.5
+10.0,OJ,0.5
+8.2,OJ,0.5
+9.4,OJ,0.5
+16.5,OJ,0.5
+9.7,OJ,0.5
+19.7,OJ,1
+23.3,OJ,1
+23.6,OJ,1
+26.4,OJ,1
+20.0,OJ,1
+25.2,OJ,1
+25.8,OJ,1
+21.2,OJ,1
+14.5,OJ,1
+27.3,OJ,1
+25.5,OJ,2
+26.4,OJ,2
+22.4,OJ,2
+24.5,OJ,2
+24.8,OJ,2
+30.9,OJ,2
+26.4,OJ,2
+27.3,OJ,2
+29.4,OJ,2
+23.0,OJ,2`,
+trees:`Girth,Height,Volume
+8.3,70,10.3
+8.6,65,10.3
+8.8,63,10.2
+10.5,72,16.4
+10.7,81,18.8
+10.8,83,19.7
+11.0,66,15.6
+11.0,75,18.2
+11.1,80,22.6
+11.2,75,19.9
+11.3,79,24.2
+11.4,76,21.0
+11.4,76,21.4
+11.7,69,21.3
+12.0,75,19.1
+12.9,74,22.2
+12.9,85,33.8
+13.3,86,27.4
+13.7,71,25.7
+13.8,64,24.9
+14.0,78,34.5
+14.2,80,31.7
+14.5,74,36.3
+16.0,72,38.3
+16.3,77,42.6
+17.3,81,55.4
+17.5,82,55.7
+17.9,80,58.3
+18.0,80,51.5
+18.0,80,51.0
+20.6,87,77.0`,
+women:`height,weight
+58,115
+59,117
+60,120
+61,123
+62,126
+63,129
+64,132
+65,135
+66,139
+67,142
+68,146
+69,150
+70,154
+71,159
+72,164`,
+cars:`speed,dist
+4,2
+4,10
+7,4
+7,22
+8,16
+9,10
+10,18
+10,26
+10,34
+11,17
+11,28
+12,14
+12,20
+12,24
+12,28
+13,26
+13,34
+13,34
+13,46
+14,26
+14,36
+14,60
+14,80
+15,20
+15,26
+15,54
+16,32
+16,40
+17,32
+17,40
+17,50
+18,42
+18,56
+18,76
+18,84
+19,36
+19,46
+19,68
+20,32
+20,48
+20,52
+20,56
+20,64
+22,66
+23,54
+24,70
+24,92
+24,93
+24,120
+25,85`,
+InsectSprays:`count,spray
+10,A
+7,A
+20,A
+14,A
+14,A
+12,A
+10,A
+23,A
+17,A
+20,A
+14,A
+13,A
+11,B
+17,B
+21,B
+11,B
+16,B
+14,B
+17,B
+17,B
+19,B
+21,B
+7,B
+13,B
+0,C
+1,C
+7,C
+2,C
+3,C
+1,C
+2,C
+1,C
+3,C
+0,C
+1,C
+4,C
+3,D
+5,D
+12,D
+6,D
+4,D
+3,D
+5,D
+5,D
+5,D
+5,D
+2,D
+4,D
+3,E
+5,E
+3,E
+5,E
+3,E
+6,E
+1,E
+1,E
+3,E
+2,E
+6,E
+4,E
+11,F
+9,F
+15,F
+22,F
+15,F
+16,F
+13,F
+10,F
+26,F
+26,F
+24,F
+13,F`
+};
+const RNAMES = {mtcars:'mtcars',iris:'iris',PlantGrowth:'PlantGrowth',ToothGrowth:'ToothGrowth',trees:'trees',women:'women',cars:'cars',InsectSprays:'InsectSprays'};
+
+/* ---------- CSV parsing & type detection ---------- */
+function parseCSV(text){
+  const lines = text.split(/\r\n|\n/).filter(l=>l.trim().length>0);
+  const parseLine = line=>{
+    const out=[]; let cur=''; let inQ=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(c==='"'){ if(inQ && line[i+1]==='"'){cur+='"';i++;} else inQ=!inQ; }
+      else if(c===',' && !inQ){ out.push(cur); cur=''; }
+      else cur+=c;
+    }
+    out.push(cur);
+    return out;
+  };
+  const header = parseLine(lines[0]).map(h=>h.trim());
+  const rows = lines.slice(1).map(l=>{
+    const vals = parseLine(l);
+    const o={};
+    header.forEach((h,i)=> o[h]=(vals[i]!==undefined?vals[i].trim():''));
+    return o;
+  });
+  return {header, rows};
+}
+function detectTypes(header, rows){
+  const types={};
+  header.forEach(h=>{
+    let allNum = rows.length>0;
+    for(const r of rows){
+      const v=r[h];
+      if(v===''||v===undefined) continue;
+      if(isNaN(parseFloat(v)) || !isFinite(parseFloat(v))){ allNum=false; break; }
+    }
+    types[h]=allNum?'numeric':'categorical';
+  });
+  return types;
+}
+
+/* ---------- app state ---------- */
+const S = {
+  datasetName:'mtcars', header:[], rows:[], baseTypes:{}, override:{},
+  page:0, pageSize:10, search:'',
+  var1:null, var2:null, facet:null, mode:'density'
+};
+
+function effType(col){ return S.override[col] || S.baseTypes[col]; }
+
+function loadDataset(name, csvText){
+  const {header, rows} = parseCSV(csvText);
+  const baseTypes = detectTypes(header, rows);
+  rows.forEach(r=> header.forEach(h=>{ if(baseTypes[h]==='numeric') r[h]=parseFloat(r[h]); }));
+  S.datasetName=name; S.header=header; S.rows=rows; S.baseTypes=baseTypes; S.override={};
+  S.page=0; S.search='';
+  const numCols = header.filter(h=>baseTypes[h]==='numeric');
+  const catCols = header.filter(h=>baseTypes[h]==='categorical');
+  S.var1 = numCols[0]||catCols[0]||header[0];
+  S.var2 = null;
+  S.facet = null;
+  renderAll();
+}
+
+/* ---------- dataset picker & column pills ---------- */
+const builtinSelect = document.getElementById('builtinSelect');
+Object.keys(BUILTIN).forEach(name=>{
+  const opt=document.createElement('option'); opt.value=name; opt.textContent=name; builtinSelect.appendChild(opt);
+});
+builtinSelect.addEventListener('change', ()=> loadDataset(builtinSelect.value, BUILTIN[builtinSelect.value]));
+document.getElementById('csvFile').addEventListener('change', e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const reader=new FileReader();
+  reader.onload=()=>{ builtinSelect.value=''; loadDataset(f.name.replace(/\.csv$/i,''), reader.result); };
+  reader.readAsText(f);
+});
+
+function renderColsStrip(){
+  const strip=document.getElementById('colsStrip'); strip.innerHTML='';
+  S.header.forEach(h=>{
+    const pill=document.createElement('span'); pill.className='col-pill';
+    const t=effType(h);
+    pill.innerHTML = `<span>${h}</span><span class="type-tag">${t}</span>`;
+    const btn=document.createElement('button'); btn.textContent='toggle';
+    btn.addEventListener('click', ()=>{
+      const base=S.baseTypes[h];
+      const cur=effType(h);
+      S.override[h] = (cur===base) ? (base==='numeric'?'categorical':'numeric') : undefined;
+      if(S.override[h]===undefined) delete S.override[h];
+      renderAll();
+    });
+    pill.appendChild(btn);
+    strip.appendChild(pill);
+  });
+  document.getElementById('datasetSummary').textContent = `${S.rows.length} rows × ${S.header.length} columns`;
+}
+
+/* ---------- data table ---------- */
+function filteredRows(){
+  if(!S.search) return S.rows;
+  const q=S.search.toLowerCase();
+  return S.rows.filter(r=> S.header.some(h=> String(r[h]).toLowerCase().includes(q)));
+}
+function renderTable(){
+  const thead=document.getElementById('tHead'), tbody=document.getElementById('tBody');
+  thead.innerHTML = '<tr>'+S.header.map(h=>`<th>${h}</th>`).join('')+'</tr>';
+  const rows=filteredRows();
+  const maxPage=Math.max(0, Math.ceil(rows.length/S.pageSize)-1);
+  if(S.page>maxPage) S.page=maxPage;
+  const start=S.page*S.pageSize;
+  const pageRows=rows.slice(start,start+S.pageSize);
+  tbody.innerHTML = pageRows.map(r=>'<tr>'+S.header.map(h=>`<td>${r[h]}</td>`).join('')+'</tr>').join('') ||
+    `<tr><td colspan="${S.header.length}" class="empty">No matching rows</td></tr>`;
+  document.getElementById('pageLabel').textContent = `Page ${rows.length?S.page+1:1} of ${maxPage+1}`;
+}
+document.getElementById('searchBox').addEventListener('input', e=>{ S.search=e.target.value; S.page=0; renderTable(); });
+document.getElementById('prevPage').addEventListener('click', ()=>{ if(S.page>0){S.page--; renderTable();} });
+document.getElementById('nextPage').addEventListener('click', ()=>{
+  const maxPage=Math.max(0, Math.ceil(filteredRows().length/S.pageSize)-1);
+  if(S.page<maxPage){S.page++; renderTable();}
+});
+
+/* ---------- variable pickers ---------- */
+function renderPickers(){
+  const v1=document.getElementById('var1Select'), v2=document.getElementById('var2Select'), fc=document.getElementById('facetSelect');
+  v1.innerHTML = S.header.map(h=>`<option value="${h}" ${h===S.var1?'selected':''}>${h} (${effType(h)})</option>`).join('');
+  v2.innerHTML = '<option value="">None</option>' + S.header.filter(h=>h!==S.var1).map(h=>`<option value="${h}" ${h===S.var2?'selected':''}>${h} (${effType(h)})</option>`).join('');
+  const catCols = S.header.filter(h=>effType(h)==='categorical' && h!==S.var1 && h!==S.var2);
+  fc.innerHTML = '<option value="">None</option>' + catCols.map(h=>`<option value="${h}" ${h===S.facet?'selected':''}>${h}</option>`).join('');
+  const numericSelected = effType(S.var1)==='numeric' && !S.var2;
+  document.getElementById('modeSeg').style.display = numericSelected ? 'flex' : 'none';
+}
+document.getElementById('var1Select').addEventListener('change', e=>{ S.var1=e.target.value; if(S.var2===S.var1) S.var2=null; renderAll(); });
+document.getElementById('var2Select').addEventListener('change', e=>{ S.var2=e.target.value||null; renderAll(); });
+document.getElementById('facetSelect').addEventListener('change', e=>{ S.facet=e.target.value||null; renderAll(); });
+document.getElementById('modeSeg').addEventListener('click', e=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  S.mode=btn.dataset.mode;
+  [...document.getElementById('modeSeg').children].forEach(b=>b.classList.toggle('active', b===btn));
+  renderPlot();
+});
+
+/* ---------- stats helpers ---------- */
+function silverman(values){
+  const n=values.length; const sd=d3.deviation(values)||1;
+  const bw=1.06*sd*Math.pow(n,-1/5);
+  return bw>0?bw:1;
+}
+function kde(values, bw, xMin, xMax, n=50){
+  const step=(xMax-xMin)/(n-1); const pts=[];
+  for(let i=0;i<n;i++){
+    const x=xMin+i*step; let sum=0;
+    for(const v of values){ const u=(x-v)/bw; sum+=Math.exp(-0.5*u*u); }
+    pts.push([x, sum/(values.length*bw*Math.sqrt(2*Math.PI))]);
+  }
+  return pts;
+}
+function boxStats(values){
+  const s=[...values].sort((a,b)=>a-b);
+  const q=p=>{ const idx=(s.length-1)*p, lo=Math.floor(idx), hi=Math.ceil(idx); return s[lo]+(s[hi]-s[lo])*(idx-lo); };
+  const q1=q(0.25), med=q(0.5), q3=q(0.75), iqr=q3-q1;
+  const lw=Math.max(s[0], q1-1.5*iqr), hw=Math.min(s[s.length-1], q3+1.5*iqr);
+  return {q1,med,q3,lw,hw,min:s[0],max:s[s.length-1],outliers:s.filter(v=>v<lw||v>hw)};
+}
+function ggHue(n){
+  const cols=[]; for(let i=0;i<n;i++) cols.push(`hsl(${(15+i*360/Math.max(n,1))%360},60%,55%)`);
+  return cols;
+}
+
+/* ---------- plotting primitives (draw into a d3 selection group) ---------- */
+function ggPanel(g, w, h){
+  g.append('rect').attr('class','gg-panel-bg').attr('x',0).attr('y',0).attr('width',w).attr('height',h);
+}
+function drawGrid(g, xScale, yScale, w, h){
+  g.append('g').selectAll('line.x').data(xScale.ticks?xScale.ticks(5):xScale.domain()).enter().append('line')
+    .attr('class','gg-grid').attr('x1',d=>xScale(d)+(xScale.bandwidth?xScale.bandwidth()/2:0)).attr('x2',d=>xScale(d)+(xScale.bandwidth?xScale.bandwidth()/2:0)).attr('y1',0).attr('y2',h);
+  g.append('g').selectAll('line.y').data(yScale.ticks(5)).enter().append('line')
+    .attr('class','gg-grid').attr('x1',0).attr('x2',w).attr('y1',d=>yScale(d)).attr('y2',d=>yScale(d));
+}
+function drawAxes(g, xScale, yScale, w, h, xLabel, yLabel){
+  g.append('g').attr('class','axis').attr('transform',`translate(0,${h})`).call(d3.axisBottom(xScale).ticks(5));
+  g.append('g').attr('class','axis').call(d3.axisLeft(yScale).ticks(5));
+  g.append('text').attr('x',w/2).attr('y',h+34).attr('text-anchor','middle').attr('class','facet-title').text(xLabel);
+  g.append('text').attr('transform',`translate(-32,${h/2}) rotate(-90)`).attr('text-anchor','middle').attr('class','facet-title').text(yLabel);
+}
+
+function plotDensity(g, w, h, groups, xLabel){ // groups: [{label,values,color}]
+  ggPanel(g,w,h);
+  const all = groups.flatMap(gr=>gr.values);
+  const x = d3.scaleLinear().domain(d3.extent(all)).nice().range([0,w]);
+  let maxY=0; const curves = groups.map(gr=>{
+    const bw = silverman(gr.values);
+    const pts = kde(gr.values, bw, x.domain()[0], x.domain()[1]);
+    maxY = Math.max(maxY, d3.max(pts, p=>p[1]));
+    return {label:gr.label, color:gr.color, pts};
+  });
+  const y = d3.scaleLinear().domain([0,maxY*1.08]).range([h,0]);
+  drawGrid(g,x,y,w,h);
+  const line = d3.line().x(d=>x(d[0])).y(d=>y(d[1])).curve(d3.curveBasis);
+  curves.forEach(c=>{
+    const area = d3.area().x(d=>x(d[0])).y0(h).y1(d=>y(d[1])).curve(d3.curveBasis);
+    g.append('path').attr('d', area(c.pts)).attr('fill', c.color).attr('opacity',0.35);
+    g.append('path').attr('d', line(c.pts)).attr('fill','none').attr('stroke', c.color).attr('stroke-width',2);
+  });
+  drawAxes(g,x,y,w,h,xLabel,'density');
+  if(groups.length>1) drawLegend(g,w,groups);
+}
+function plotBox(g, w, h, groups, yLabel){ // groups: [{label,values,color}]
+  ggPanel(g,w,h);
+  const x = d3.scaleBand().domain(groups.map(gr=>gr.label)).range([0,w]).padding(0.35);
+  const allVals = groups.flatMap(gr=>gr.values);
+  const y = d3.scaleLinear().domain(d3.extent(allVals)).nice().range([h,0]);
+  drawGrid(g,x,y,w,h);
+  groups.forEach(gr=>{
+    const st=boxStats(gr.values); const cx=x(gr.label)+x.bandwidth()/2; const bw=x.bandwidth();
+    g.append('line').attr('x1',cx).attr('x2',cx).attr('y1',y(st.lw)).attr('y2',y(st.hw)).attr('stroke',gr.color).attr('stroke-width',1.5);
+    g.append('rect').attr('x',cx-bw/2).attr('y',y(st.q3)).attr('width',bw).attr('height',Math.max(1,y(st.q1)-y(st.q3))).attr('fill',gr.color).attr('opacity',0.45).attr('stroke',gr.color);
+    g.append('line').attr('x1',cx-bw/2).attr('x2',cx+bw/2).attr('y1',y(st.med)).attr('y2',y(st.med)).attr('stroke',gr.color).attr('stroke-width',2);
+    st.outliers.forEach(o=> g.append('circle').attr('cx',cx).attr('cy',y(o)).attr('r',2.5).attr('fill',gr.color));
+  });
+  drawAxes(g,x,y,w,h,'',yLabel);
+}
+function plotBar(g, w, h, xLabels, series, xLabel){ // series: [{label,color,counts:{cat:count}}]
+  ggPanel(g,w,h);
+  const x0 = d3.scaleBand().domain(xLabels).range([0,w]).padding(0.25);
+  const x1 = d3.scaleBand().domain(series.map(s=>s.label)).range([0,x0.bandwidth()]).padding(0.08);
+  const maxCount = d3.max(xLabels.flatMap(xl=> series.map(s=>s.counts[xl]||0))) || 1;
+  const y = d3.scaleLinear().domain([0,maxCount*1.1]).range([h,0]);
+  drawGrid(g,x0,y,w,h);
+  xLabels.forEach(xl=>{
+    series.forEach(s=>{
+      const c=s.counts[xl]||0;
+      g.append('rect').attr('x', x0(xl)+x1(s.label)).attr('width', x1.bandwidth())
+        .attr('y', y(c)).attr('height', h-y(c)).attr('fill', s.color).attr('opacity',0.85);
+    });
+  });
+  drawAxes(g,x0,y,w,h,xLabel,'count');
+  if(series.length>1) drawLegend(g,w,series);
+}
+function plotScatter(g, w, h, groups, xLabel, yLabel){ // groups: [{label,color,points:[[x,y],...]}]
+  ggPanel(g,w,h);
+  const allPts = groups.flatMap(gr=>gr.points);
+  const x = d3.scaleLinear().domain(d3.extent(allPts,p=>p[0])).nice().range([0,w]);
+  const y = d3.scaleLinear().domain(d3.extent(allPts,p=>p[1])).nice().range([h,0]);
+  drawGrid(g,x,y,w,h);
+  groups.forEach(gr=> gr.points.forEach(p=>
+    g.append('circle').attr('cx',x(p[0])).attr('cy',y(p[1])).attr('r',3.2).attr('fill',gr.color).attr('opacity',0.7)));
+  drawAxes(g,x,y,w,h,xLabel,yLabel);
+  if(groups.length>1) drawLegend(g,w,groups);
+}
+function drawLegend(g,w,groups){
+  const leg=g.append('g').attr('transform',`translate(${w-110},4)`);
+  groups.forEach((gr,i)=>{
+    const row=leg.append('g').attr('class','legend-item').attr('transform',`translate(0,${i*15})`);
+    row.append('rect').attr('width',9).attr('height',9).attr('fill',gr.color);
+    row.append('text').attr('x',13).attr('y',8.5).text(gr.label);
+  });
+}
+
+/* ---------- main plot dispatch ---------- */
+function groupBy(rows, col){
+  const m={}; rows.forEach(r=>{ const k=r[col]; (m[k]=m[k]||[]).push(r); }); return m;
+}
+function currentCombo(){
+  const t1=effType(S.var1), t2=S.var2?effType(S.var2):null;
+  if(!S.var2) return t1==='numeric' ? 'num1' : 'cat1';
+  if(t1==='numeric'&&t2==='numeric') return 'numnum';
+  if(t1==='categorical'&&t2==='categorical') return 'catcat';
+  return 'numcat';
+}
+// Splits rows into overlay groups by an optional categorical var and/or the facet var,
+// combining both into one composite label when both are present. Facet levels capped at 8.
+let facetTruncated = false;
+function computeGroups(rows, catVar){
+  facetTruncated = false;
+  const base = catVar ? groupBy(rows, catVar) : {'':rows};
+  const baseKeys = Object.keys(base).sort();
+  let out = [];
+  baseKeys.forEach(k=>{
+    if(S.facet){
+      const fg = groupBy(base[k], S.facet);
+      let fKeys = Object.keys(fg).sort();
+      if(fKeys.length>8){ facetTruncated = true; fKeys = fKeys.slice(0,8); }
+      fKeys.forEach(fk=> out.push({label: catVar ? `${k} · ${fk}` : fk, rows: fg[fk]}));
+    } else {
+      out.push({label:k, rows:base[k]});
+    }
+  });
+  return out;
+}
+function renderPlot(){
+  const area=document.getElementById('plotArea');
+  area.innerHTML='';
+  const combo=currentCombo();
+  document.getElementById('comboHint').textContent = comboDescription(combo);
+  const svg=d3.select(area).append('svg').attr('class','chart').attr('viewBox','0 0 560 360');
+  const g=svg.append('g').attr('transform','translate(56,20)');
+  drawComboPlot(g, S.rows, combo, 460, 300);
+  if(facetTruncated){
+    const note=document.createElement('p'); note.className='hint';
+    note.textContent=`Showing 8 of ${new Set(S.rows.map(r=>r[S.facet])).size} facet levels, overlaid.`;
+    area.appendChild(note);
+  }
+}
+function comboDescription(combo){
+  const base={
+    num1:'One numeric variable → density curve or boxplot.',
+    cat1:'One categorical variable → bar chart of counts.',
+    numnum:'Two numeric variables → scatterplot.',
+    numcat:'One numeric + one categorical → overlaid density or side-by-side boxplots.',
+    catcat:'Two categorical variables → side-by-side (dodged) bar chart of counts.'
+  }[combo];
+  return S.facet ? base + ' Facet levels are overlaid here as extra color groups (real facet_wrap() draws separate panels — see the R code).' : base;
+}
+function drawComboPlot(g, rows, combo, w, h){
+  if(rows.length===0){ g.append('text').attr('x',w/2).attr('y',h/2).attr('text-anchor','middle').attr('class','facet-title').text('no data'); return; }
+  if(combo==='num1'){
+    const groups = computeGroups(rows, null).map((gr,i,arr)=>({label:gr.label||S.var1, values:gr.rows.map(r=>r[S.var1]).filter(v=>!isNaN(v)), color:ggHue(arr.length)[i]}));
+    if(S.mode==='density') plotDensity(g,w,h,groups, S.var1);
+    else plotBox(g,w,h,groups, S.var1);
+  } else if(combo==='cat1'){
+    const seriesGroups = computeGroups(rows, null);
+    const xLabels = [...new Set(rows.map(r=>r[S.var1]))].sort();
+    const colors = ggHue(seriesGroups.length);
+    const series = seriesGroups.map((gr,i)=>({label:gr.label||S.var1, color:colors[i],
+      counts: Object.fromEntries(xLabels.map(xl=>[xl, gr.rows.filter(r=>r[S.var1]===xl).length]))}));
+    plotBar(g,w,h,xLabels,series,S.var1);
+  } else if(combo==='numnum'){
+    const rawGroups = computeGroups(rows, null);
+    const colors = ggHue(rawGroups.length);
+    const groups = rawGroups.map((gr,i)=>({label:gr.label||`${S.var1} vs ${S.var2}`, color:colors[i],
+      points: gr.rows.map(r=>[r[S.var1], r[S.var2]])}));
+    plotScatter(g,w,h,groups,S.var1,S.var2);
+  } else if(combo==='numcat'){
+    const numVar = effType(S.var1)==='numeric'?S.var1:S.var2;
+    const catVar = numVar===S.var1?S.var2:S.var1;
+    const rawGroups = computeGroups(rows, catVar);
+    const colors = ggHue(rawGroups.length);
+    const groups = rawGroups.map((gr,i)=>({label:gr.label, values:gr.rows.map(r=>r[numVar]).filter(v=>!isNaN(v)), color:colors[i]}));
+    if(S.mode==='density') plotDensity(g,w,h,groups, numVar);
+    else plotBox(g,w,h,groups, numVar);
+  } else if(combo==='catcat'){
+    const rawGroups = computeGroups(rows, S.var2);
+    const v1Labels = [...new Set(rows.map(r=>r[S.var1]))].sort();
+    const colors = ggHue(rawGroups.length);
+    const series = rawGroups.map((gr,i)=>({label:gr.label, color:colors[i],
+      counts: Object.fromEntries(v1Labels.map(v1val=>[v1val, gr.rows.filter(r=>r[S.var1]===v1val).length]))}));
+    plotBar(g,w,h,v1Labels,series,S.var1);
+  }
+}
+
+/* ---------- R code generation ---------- */
+function rname(col){
+  return (S.override[col] ? `factor(${col})` : col);
+}
+function generateRCode(){
+  const combo=currentCombo();
+  let lines=['library(ggplot2)',''];
+  if(!(S.datasetName in BUILTIN)) lines.push(`df <- read.csv("${S.datasetName}.csv")`, '');
+  const df = (S.datasetName in RNAMES) ? RNAMES[S.datasetName] : 'df';
+  let call='';
+  if(combo==='num1'){
+    call = S.mode==='density'
+      ? `ggplot(${df}, aes(x = ${rname(S.var1)})) +\n  geom_density(fill = "steelblue", alpha = 0.5)`
+      : `ggplot(${df}, aes(x = "", y = ${rname(S.var1)})) +\n  geom_boxplot(fill = "steelblue") +\n  xlab(NULL)`;
+  } else if(combo==='cat1'){
+    call = `ggplot(${df}, aes(x = ${rname(S.var1)})) +\n  geom_bar(fill = "steelblue")`;
+  } else if(combo==='numnum'){
+    call = `ggplot(${df}, aes(x = ${rname(S.var1)}, y = ${rname(S.var2)})) +\n  geom_point()`;
+  } else if(combo==='numcat'){
+    const numVar = effType(S.var1)==='numeric'?S.var1:S.var2;
+    const catVar = numVar===S.var1?S.var2:S.var1;
+    call = S.mode==='density'
+      ? `ggplot(${df}, aes(x = ${rname(numVar)}, fill = ${rname(catVar)})) +\n  geom_density(alpha = 0.5)`
+      : `ggplot(${df}, aes(x = ${rname(catVar)}, y = ${rname(numVar)}, fill = ${rname(catVar)})) +\n  geom_boxplot()`;
+  } else if(combo==='catcat'){
+    call = `ggplot(${df}, aes(x = ${rname(S.var1)}, fill = ${rname(S.var2)})) +\n  geom_bar(position = "dodge")`;
+  }
+  if(S.facet) call += ` +\n  facet_wrap(~ ${rname(S.facet)})`;
+  lines.push(call);
+  if(S.facet) lines.push('', '# Note: the app overlays facet groups in one panel for easy comparison;', '# facet_wrap() itself draws each group into its own separate panel.');
+  return lines.join('\n');
+}
+
+/* ---------- modal ---------- */
+const backdrop=document.getElementById('modalBackdrop');
+document.getElementById('showCode').addEventListener('click', ()=>{
+  document.getElementById('codeText').textContent = generateRCode();
+  backdrop.classList.add('open');
+});
+document.getElementById('closeModal').addEventListener('click', ()=>backdrop.classList.remove('open'));
+document.getElementById('closeModal2').addEventListener('click', ()=>backdrop.classList.remove('open'));
+backdrop.addEventListener('click', e=>{ if(e.target===backdrop) backdrop.classList.remove('open'); });
+document.getElementById('copyCode').addEventListener('click', ()=>{
+  navigator.clipboard?.writeText(document.getElementById('codeText').textContent).catch(()=>{});
+});
+
+/* ---------- render orchestration ---------- */
+function renderAll(){
+  renderColsStrip();
+  renderTable();
+  renderPickers();
+  renderPlot();
+}
+builtinSelect.value='mtcars';
+loadDataset('mtcars', BUILTIN.mtcars);
+</script>
+</body>
+</html>
